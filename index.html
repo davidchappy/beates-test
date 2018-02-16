@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <link rel="stylesheet" type="text/css" href="baetes-3d-test.css"></link>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/90/three.min.js"></script>
+  <script src="js/OrbitControls.js"></script>
+  <script src="js/OBJLoader.js"></script>
+  <script src="js/MTLLoader.js"></script>
+  <script src="js/spin.js"></script>
+  <title>Beates 3D Test - Shoe</title>
+</head>
+
+<body>
+  <div class="overlaid-header">
+    <h1>Dear Friends at Beates</h1>
+    <p>I'm happy to tweak anything you see here.
+      <br>I look forward to meeting you!</p>
+    <p>Thanks,
+      <br>
+      <a href="http://portfolio.dachapman.com" target="_blank">David Chapman</a>
+    </p>
+    <button id="reflectButton">Toggle Reflection</button>
+  </div>
+
+  <script>
+    window.THREE = THREE;
+    window.render = render;
+
+    // Settings
+    const CLEAR_COLOR = 0x7a6c5b;
+    const BGD_OPACITY = 1;
+    const CAMERA_Z = 30;
+    const ZOOM_MIN = 20;
+    const ZOOM_MAX = 70;
+    const SHADOW_DIST = 15;
+    const MATERIAL_SHININESS = 200;
+    const SPINNER_OPTIONS = {
+      color: '#6CA9C6'
+    };
+
+    // Global vars
+    let spinner;    
+    let scene, camera, renderer;
+    let controls;
+    let ambientLight, directionalLight;
+    let mtlLoader, objLoader;
+    let reflectionCube, reflectingMaterial, reflectButton;
+
+    // Run this baby
+    init();
+    animate();
+
+    function init() {
+      initSpinner();
+      setScene();
+      setCamera();
+      setRenderer();
+      setControls()
+      setLighting();
+      initReflection();
+      loadModel();
+      setListeners();
+    }
+
+    function initSpinner() {
+      spinner = new Spinner(SPINNER_OPTIONS);
+      window.spinner = spinner;
+      return spinner;
+    } 
+
+    function setScene() {
+      scene = new THREE.Scene();
+      window.scene = scene;
+    }
+
+    function setCamera() {
+      camera = new THREE.PerspectiveCamera(
+        45, window.innerWidth / window.innerHeight, 0.1, 1000
+      );
+      camera.position.z = CAMERA_Z;
+      scene.add(camera);    
+    }
+
+    function setRenderer() {
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setClearColor(CLEAR_COLOR, BGD_OPACITY);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      document.body.appendChild(renderer.domElement);
+    }
+
+    function setControls() {
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.minDistance = ZOOM_MIN;
+      controls.maxDistance = ZOOM_MAX;
+      controls.addEventListener('change', render);
+    }
+
+    function setLighting() {
+      ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+      scene.add(ambientLight);
+
+      directionalLight = new THREE.DirectionalLight(0xffffff);
+      directionalLight.position.set( -5, 100, 40 );
+      directionalLight.castShadow = true;
+
+      directionalLight.shadow.mapSize.width  = 2048;
+      directionalLight.shadow.mapSize.height = 2048;
+
+      directionalLight.shadow.radius = 4;
+
+      directionalLight.shadow.camera.left   = -SHADOW_DIST;
+      directionalLight.shadow.camera.right  =  SHADOW_DIST;
+      directionalLight.shadow.camera.bottom = -SHADOW_DIST;
+      directionalLight.shadow.camera.top    =  SHADOW_DIST;
+      directionalLight.shadow.camera.near   =  0.5;
+      directionalLight.shadow.camera.far    = 1000;
+
+      scene.add(directionalLight);
+      window.light = directionalLight;      
+    }
+
+    function initReflection() {
+      var cubeTextureLoader = new THREE.CubeTextureLoader();
+      var locations = [
+        'assets/px.jpg', 
+        'assets/nx.jpg',
+        'assets/py.jpg',
+        'assets/ny.jpg',
+        'assets/pz.jpg',
+        'assets/nz.jpg',
+      ];
+      
+      reflectionCube = cubeTextureLoader.load(locations);
+      reflectionCube.format = THREE.RGBFormat;
+      window.reflectionCube = reflectionCube;
+
+      reflectButton = document.getElementById('reflectButton');
+    }
+
+    function loadModel() {
+      spinner.spin(document.body);
+      mtlLoader = new THREE.MTLLoader();
+      mtlLoader.load('assets/vans-shoes-new1.mtl', function (creator) {
+        creator.preload();
+        const materials = creator.materials
+
+        window.materials = materials;
+        
+        for (let material in materials) {
+          const thisMaterial = materials[material];
+          thisMaterial.shininess = MATERIAL_SHININESS;
+          if (thisMaterial.name === 'None') {
+            reflectingMaterial = thisMaterial;
+          }
+        }
+
+        objLoader = new THREE.OBJLoader();
+        objLoader.setMaterials(creator);
+        objLoader.load('assets/vans-shoes-new2.obj', function (object) {
+          const shoe = object.children[0];
+          window.shoe = shoe;
+
+          shoe.castShadow = true;
+          shoe.receiveShadow = true;
+
+          scene.add(shoe);
+          window.setTimeout(function() { spinner.stop() }, 1000);
+        });
+      });
+    }
+
+    function toggleReflection() {
+      if (reflectingMaterial.envMap) {
+        reflectingMaterial.envMap = undefined;
+      } else {
+        reflectingMaterial.envMap = reflectionCube;
+      }
+      reflectingMaterial.needsUpdate = true;      
+      render();
+    }
+
+    function setListeners() {
+      window.addEventListener('resize', function (event) {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      reflectButton.addEventListener('click', function(event) {
+        event.preventDefault();
+        toggleReflection();
+      });
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      render();
+    }
+
+    function render() {
+      camera.lookAt(scene.position);
+      renderer.render(scene, camera);
+    }
+
+  </script>
+</body>
+
+</html>
