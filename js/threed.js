@@ -38,7 +38,7 @@ function init() {
   setScene();
   setCamera();
   setRenderer();
-  setControls()
+  setControls();
   setLighting();
   initReflection();
   loadModel();
@@ -78,6 +78,9 @@ function setRenderer() {
 
 function setControls() {
   controls = new THREE.OrbitControls(camera, renderer.domElement);
+  window.controls = controls;
+  controls.enableZoom = false;
+  controls.enablePan = false;
   controls.minDistance = ZOOM_MIN;
   controls.maxDistance = ZOOM_MAX;
   controls.addEventListener('change', render);
