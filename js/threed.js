@@ -68,6 +68,13 @@ function setCamera() {
 
 function setRenderer() {
   renderer = new THREE.WebGLRenderer({ antialias: true });
+
+  window.renderer = renderer;
+
+  renderer.vr.enabled = true;
+  // renderer.animate(update);
+  document.body.appendChild(WEBVR.createButton(renderer));
+
   renderer.setClearColor(CLEAR_COLOR, BGD_OPACITY);
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
